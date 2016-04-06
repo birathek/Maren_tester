@@ -15,36 +15,56 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
     BluetoothSocket mmSocket;
-    BluetoothDevice mmDevice = null;
+    BluetoothDevice mmDevice;
+    UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
 
     final byte delimiter = 33;
     int readBufferPosition = 0;
 
-
-    public void sendBtMsg(String msg2send){
-        //UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
-        UUID uuid = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee"); //Standard SerialPortService ID
+    public void connectToBt(){
         try {
-
             mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
-            if (!mmSocket.isConnected()){
-                mmSocket.connect();
-            }
 
-            String msg = msg2send;
-            //msg += "\n";
-            OutputStream mmOutputStream = mmSocket.getOutputStream();
-            mmOutputStream.write(msg.getBytes());
+            if (!mmSocket.isConnected()){
+                Log.e("Aquarium", "Not connected. Connecting");
+                mmSocket.connect();
+            } else {
+                Log.e("Aquarium", "Already connected");
+            }
+            //sendBtMsg("conn");
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+            Log.e("Aquarium", "Failed to connect. Retrying");
+            connectToBt();
+        }
+    }
+
+    public void sendBtMsg(String msg2send){
+        //UUID uuid = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee"); //Standard SerialPortService ID
+
+        try {
+
+            String msg = msg2send;
+
+            OutputStream mmOutputStream = mmSocket.getOutputStream();
+            mmOutputStream.write(msg.getBytes());
+            Log.e("Aquarium", "Sent msg");
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            Log.e("Aquarium", "Failed to send msg");
+            sendBtMsg(msg2send);
         }
 
     }
@@ -57,11 +77,52 @@ public class MainActivity extends Activity {
         final Handler handler = new Handler();
 
         final TextView myLabel = (TextView) findViewById(R.id.btResult);
-        final Button tempButton = (Button) findViewById(R.id.tempButton);
+        final Button connButton = (Button) findViewById(R.id.connButton);
         final Button lightOnButton = (Button) findViewById(R.id.lightOn);
         final Button lightOffButton = (Button) findViewById(R.id.lightOff);
 
+        /*
+        connButton.setOnClickListener(connectListener);
+        lightOnButton.setOnClickListener(onListener);
+        lightOffButton.setOnClickListener(offListener);
+        */
+
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+
+        if(!mBluetoothAdapter.isEnabled()){
+            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBluetooth, 0);
+        }
+
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+
+        while(pairedDevices.size() == 0) {
+            pairedDevices = mBluetoothAdapter.getBondedDevices();
+        }
+
+        if(pairedDevices.size() > 0)
+        {
+            for(BluetoothDevice device : pairedDevices)
+            {
+                if(device.getName().equals("raspberrypi"))
+                {
+                    Log.e("Aquarium",device.getName());
+
+                    mmDevice = device;
+                    final BluetoothDevice device1 = device;
+
+                    handler.post(new Runnable() {
+                        public void run() {
+                            String text = "Press to connect to ";
+                            myLabel.setText(text + device1.getName());
+                        }
+                    });
+
+                    break;
+                }
+            }
+        }
 
         final class workerThread implements Runnable {
 
@@ -71,135 +132,96 @@ public class MainActivity extends Activity {
                 btMsg = msg;
             }
 
-            public void run()
-            {
+
+            public void run() {
+
                 sendBtMsg(btMsg);
-                while(!Thread.currentThread().isInterrupted())
-                {
+                while (!Thread.currentThread().isInterrupted()) {
                     int bytesAvailable;
-                    boolean workDone = false;
 
                     try {
-
-
 
                         final InputStream mmInputStream;
                         mmInputStream = mmSocket.getInputStream();
                         bytesAvailable = mmInputStream.available();
-                        if(bytesAvailable > 0)
-                        {
+                        if (bytesAvailable > 0) {
 
                             byte[] packetBytes = new byte[bytesAvailable];
-                            Log.e("Aquarium recv bt","bytes available");
+                            Log.e("Aquarium recv bt", "bytes available");
                             byte[] readBuffer = new byte[1024];
                             mmInputStream.read(packetBytes);
 
-                            for(int i=0;i<bytesAvailable;i++)
-                            {
+                            for (int i = 0; i < bytesAvailable; i++) {
                                 byte b = packetBytes[i];
-                                if(b == delimiter)
-                                {
+                                if (b == delimiter) {
                                     byte[] encodedBytes = new byte[readBufferPosition];
                                     System.arraycopy(readBuffer, 0, encodedBytes, 0, encodedBytes.length);
                                     final String data = new String(encodedBytes, "US-ASCII");
                                     readBufferPosition = 0;
 
                                     //The variable data now contains our full command
-                                    handler.post(new Runnable()
-                                    {
-                                        public void run()
-                                        {
+
+                                    //Her blir outputtet fra Pi-en skrevet
+                                    handler.post(new Runnable() {
+                                        public void run() {
                                             myLabel.setText(data);
                                         }
                                     });
-
-                                    workDone = true;
                                     break;
 
 
-                                }
-                                else
-                                {
+                                } else {
                                     readBuffer[readBufferPosition++] = b;
                                 }
-                            }
-
-                            if (workDone == true){
-                                mmSocket.close();
-                                break;
                             }
 
                         }
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
+                        handler.post(new Runnable() {
+                            public void run() {
+                                final String text = "Failed to connect";
+                                myLabel.setText(text);
+                            }
+                        });
                         e.printStackTrace();
                     }
 
                 }
             }
-        };
+        }
 
-
-        // start temp button handler
-
-        tempButton.setOnClickListener(new View.OnClickListener() {
+        connButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                Log.e("Aquarium", "Pressed connect button");
                 // Perform action on temp button click
-
-                (new Thread(new workerThread("temp"))).start();
-
+                connectToBt();
             }
         });
 
-
-        //end temp button handler
-
-        //start light on button handler
         lightOnButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                Log.e("Aquarium", "Pressed light on button");
                 // Perform action on temp button click
-
                 (new Thread(new workerThread("lightOn"))).start();
-
             }
         });
-        //end light on button handler
-
-        //start light off button handler
 
         lightOffButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                Log.e("Aquarium", "Pressed light off button");
                 // Perform action on temp button click
-
                 (new Thread(new workerThread("lightOff"))).start();
-
             }
         });
 
-        // end light off button handler
-
-        if(!mBluetoothAdapter.isEnabled())
-        {
-            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBluetooth, 0);
-        }
-
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-        if(pairedDevices.size() > 0)
-        {
-            for(BluetoothDevice device : pairedDevices)
-            {
-                if(device.getName().equals("raspberrypi-0")) //Note, you will need to change this to match the name of your device
-                {
-                    Log.e("Aquarium",device.getName());
-                    mmDevice = device;
-                    break;
-                }
-            }
-        }
-
-
     }
+
+    //TODO: Lage en funksjon som leser ping-meldinger fra Pi og svarer på
+    //      disse for å bekrefte status som tilkoblet. Brukeren trenger
+    //      ikke se disse, men de bør loggføres.
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
