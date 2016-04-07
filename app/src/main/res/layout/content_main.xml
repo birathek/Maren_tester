@@ -13,46 +13,20 @@
     tools:showIn="@layout/activity_main"
     tools:context="com.example.birathek.maren_tester.MainActivity">
 
-    <TextView
-        android:text="Hello World!"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/textView" />
+        <TextView
+            android:text="Hello World!"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/textView" />
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connect!"
-        android:id="@+id/connButton"
-        android:layout_marginTop="33dp"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@+id/textView"/>
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Light on"
-        android:id="@+id/lightOn"
-        android:layout_below="@+id/connButton"
-        android:layout_centerHorizontal="true"/>
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Light off"
-        android:id="@+id/lightOff"
-        android:layout_below="@+id/lightOn"
-        android:layout_alignLeft="@+id/lightOn"
-        android:layout_alignStart="@+id/lightOn"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tekst"
-        android:id="@+id/btResult"
-        android:layout_below="@+id/lightOff"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="115dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tekst"
+            android:id="@+id/btResult"
+            android:layout_below="@+id/textView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="115dp" />
 
 
-</RelativeLayout>
+    </RelativeLayout>

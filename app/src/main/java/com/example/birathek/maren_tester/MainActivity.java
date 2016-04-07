@@ -1,4 +1,5 @@
 package com.example.birathek.maren_tester;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,9 +15,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,6 +24,7 @@ public class MainActivity extends Activity {
     BluetoothDevice mmDevice;
     UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
 
+    //Dette er EOL-symbolet!!! Hvis ikke linja slutter med "!" venter den på mer!
     final byte delimiter = 33;
     int readBufferPosition = 0;
 
@@ -39,7 +38,7 @@ public class MainActivity extends Activity {
             } else {
                 Log.e("Aquarium", "Already connected");
             }
-            //sendBtMsg("conn");
+            Toast.makeText(MainActivity.this, "Connection established", Toast.LENGTH_LONG).show();
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -77,15 +76,6 @@ public class MainActivity extends Activity {
         final Handler handler = new Handler();
 
         final TextView myLabel = (TextView) findViewById(R.id.btResult);
-        final Button connButton = (Button) findViewById(R.id.connButton);
-        final Button lightOnButton = (Button) findViewById(R.id.lightOn);
-        final Button lightOffButton = (Button) findViewById(R.id.lightOff);
-
-        /*
-        connButton.setOnClickListener(connectListener);
-        lightOnButton.setOnClickListener(onListener);
-        lightOffButton.setOnClickListener(offListener);
-        */
 
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -114,7 +104,7 @@ public class MainActivity extends Activity {
 
                     handler.post(new Runnable() {
                         public void run() {
-                            String text = "Press to connect to ";
+                            String text = "Waiting for ";
                             myLabel.setText(text + device1.getName());
                         }
                     });
@@ -126,16 +116,17 @@ public class MainActivity extends Activity {
 
         final class workerThread implements Runnable {
 
-            private String btMsg;
+            //private String btMsg;
 
-            public workerThread(String msg) {
-                btMsg = msg;
+            public workerThread() {
+                //public workerThread(String msg) {
+                //btMsg = msg;
             }
 
 
             public void run() {
 
-                sendBtMsg(btMsg);
+                //sendBtMsg(btMsg);
                 while (!Thread.currentThread().isInterrupted()) {
                     int bytesAvailable;
 
@@ -164,6 +155,7 @@ public class MainActivity extends Activity {
                                     //Her blir outputtet fra Pi-en skrevet
                                     handler.post(new Runnable() {
                                         public void run() {
+                                            Log.e("Aquarium", "Changing text to: " + data);
                                             myLabel.setText(data);
                                         }
                                     });
@@ -171,6 +163,7 @@ public class MainActivity extends Activity {
 
 
                                 } else {
+                                    Log.e("Aquarium", "pushing readBufferPosition forward");
                                     readBuffer[readBufferPosition++] = b;
                                 }
                             }
@@ -191,29 +184,10 @@ public class MainActivity extends Activity {
             }
         }
 
-        connButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Log.e("Aquarium", "Pressed connect button");
-                // Perform action on temp button click
-                connectToBt();
-            }
-        });
+        //Cycle
 
-        lightOnButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Log.e("Aquarium", "Pressed light on button");
-                // Perform action on temp button click
-                (new Thread(new workerThread("lightOn"))).start();
-            }
-        });
-
-        lightOffButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Log.e("Aquarium", "Pressed light off button");
-                // Perform action on temp button click
-                (new Thread(new workerThread("lightOff"))).start();
-            }
-        });
+        connectToBt();
+        (new Thread(new workerThread())).start();
 
     }
 
